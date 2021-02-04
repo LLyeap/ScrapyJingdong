@@ -114,9 +114,17 @@ class ImagePipeline(ImagesPipeline):
         :param info:
         :return:
         """
-        return '%s/%s/%s.jpg' % (time.strftime("%Y%m", time.localtime()),
-                                 time.strftime("%d", time.localtime()),
-                                 time.strftime("%H%M%S", time.localtime()) + str(random.randint(10, 99)))
+        # 获取当前下载富文本序号, 将下载文件按序号排序
+        reqUrl = request.url
+        skuRichTextUrls = info.spider.skuInfo['rich_text_urls']
+        index = skuRichTextUrls.index(reqUrl)
+        # 获取skuCode, 将图片资源以文件夹分组
+        skuCode = info.spider.skuInfo['code']
+        # 年月/日/sku_code/随机
+        return '%s/%s/%s/%s.jpg' % (time.strftime("%Y%m", time.localtime()),
+                                    time.strftime("%d", time.localtime()),
+                                    skuCode,
+                                    str(index).zfill(2) + time.strftime("%H%M%S", time.localtime()) + str(random.randint(10, 99)))
 
     def item_completed(self, results, item, info):
         """
@@ -126,9 +134,8 @@ class ImagePipeline(ImagesPipeline):
         :param info:
         :return:
         """
-        print(results)
-        # TODO: 需要进行排序
         image_paths = [x['path'] for ok, x in results if ok]
+        image_paths.sort()  # 由于__file_path__在处理文件名时做了序号前缀, 所以该出直接排序即可
         if image_paths:
             item['rich_text_urls'] = ''.join(image_paths)
         else:

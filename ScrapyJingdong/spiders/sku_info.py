@@ -50,8 +50,10 @@ class SkuInfoSpider(Spider):    # 需要继承scrapy.Spider类
 
         # 正式处理富文本内容
         content = str(json.loads(response.text)['content'])
-        regex = r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"   # 正则匹配图片url
+        # regex = r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"   # 正则匹配图片url
+        regex = r"//(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"    # 正则匹配图片url, 由于图片src没有http协议开头, 所以去掉
         data = re.findall(regex, content)   # 正则提取图片url列表
+        data = ['http:' + url for url in data]
         self.skuInfo['rich_text_urls'] = data
 
         return self.skuInfo
