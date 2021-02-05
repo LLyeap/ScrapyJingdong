@@ -8,21 +8,18 @@
 
 
 # useful for handling different item types with a single interface
-from itemadapter import ItemAdapter
 
 import time
 import random
-
-import ScrapyJingdong.database as db
-
-from ScrapyJingdong.items import SkuInfo
-
 from scrapy import Request
 from scrapy.pipelines.images import ImagesPipeline
 from scrapy.utils.misc import arg_to_iter
-from scrapy.utils.python import to_bytes
-
 from twisted.internet.defer import DeferredList
+import json
+
+import ScrapyJingdong.database as db
+from ScrapyJingdong.items import SkuInfo
+
 
 cursor = db.connection.cursor()
 
@@ -37,28 +34,43 @@ class ScrapyJingdongPipeline:
             '''
             SkuInfo
             '''
-            exist = self.get_sku_info(item)
+            save_type = 'file'  # 选择存储sku基础信息的格式: file-文件/db-数据表
 
-            if not exist:
-                try:
-                    self.save_sku_info(item)
-                except Exception as e:
-                    print(item)
-                    print(e)
+            if save_type == 'file':     # 以文件形式存储
+                self.save_sku_info_file(item)
             else:
-                try:
-                    self.update_sku_info(item)
-                except Exception as e:
-                    print(item)
-                    print(e)
+                exist = self.get_sku_info(item)     # 查找数据库里是否有该值
+
+                if not exist:
+                    try:
+                        self.save_sku_info(item)    # 数据库存储
+                    except Exception as e:
+                        print(item)
+                        print(e)
+                else:
+                    try:
+                        self.update_sku_info(item)  # 数据库修改
+                    except Exception as e:
+                        print(item)
+                        print(e)
         return item
 
     def get_sku_info(self, item):
+        """
+        DB 查看某个code的sku基本信息是否已存在
+        :param item:
+        :return:
+        """
         sql = 'SELECT code FROM skus WHERE code = %s' % item['code']
         cursor.execute(sql)
         return cursor.fetchone()
 
     def save_sku_info(self, item):
+        """
+        DB 新增不存在的sku基本信息存储
+        :param item:
+        :return:
+        """
         keys = item.keys()
         values = tuple(item.values())
         fields = ','.join(keys)
@@ -68,6 +80,11 @@ class ScrapyJingdongPipeline:
         return db.connection.commit()
 
     def update_sku_info(self, item):
+        """
+        DB 修改数据库已存储的值
+        :param item:
+        :return:
+        """
         code = item.pop('code')
         keys = item.keys()
         values = list(item.values())
@@ -76,6 +93,36 @@ class ScrapyJingdongPipeline:
         sql = 'UPDATE skus SET %s WHERE code = %s' % (','.join(fields), '%s')
         cursor.execute(sql, values)
         return db.connection.commit()
+
+    def save_sku_info_file(self, item):
+        """
+        sku基本信息存储到文本文件
+        :param item:
+        :return:
+        """
+        # 文件存储路径: ./storage/年月/日/sku_code/info.txt
+        path = '%s/%s/%s/%s/info.json' % ('./storage',
+                                         time.strftime("%Y%m", time.localtime()),
+                                         time.strftime("%d", time.localtime()),
+                                         item['code'])
+
+        json = self.sku_info_to_json(item)  # 获取sku信息的文本格式
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(json)
+
+    def sku_info_to_json(self, item):
+        """
+        将sku的item转换为json字符串
+        :param item:
+        :return:
+        """
+        # 将item转换字典
+        item_dict = dict(item)
+
+        # 转换为json字符串并追加,逗号
+        json_str = json.dumps(item_dict)
+
+        return json_str
 
 
 class ImagePipeline(ImagesPipeline):
