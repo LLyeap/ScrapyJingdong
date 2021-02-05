@@ -11,5 +11,5 @@ class SkuInfo(Item):
     code = Field()
     name = Field()
     jd_price = Field()
-    image = Field()
+    images = Field()
     rich_text_urls = Field()

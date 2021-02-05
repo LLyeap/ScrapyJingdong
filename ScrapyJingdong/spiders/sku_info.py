@@ -34,7 +34,7 @@ class SkuInfoSpider(Spider):    # 需要继承scrapy.Spider类
             print(response.url)
         else:
             self.skuInfo['code'] = self.get_sku_id(response)
-            self.skuInfo['image'] = 'http://img30.360buyimg.com/popWareDetail/jfs/t1/147977/4/7331/135469/5f506ed1E784062f1/1b774961ec58590f.jpg'
+            self.skuInfo['images'] = self.get_page_config_image_list(response)   # 获取主图列表
             self.skuInfo['name'] = self.get_sku_name(response)    # 获取商品名称
             self.skuInfo['jd_price'] = self.get_sku_jd_price(response)    # 获取京东金额
 
@@ -74,18 +74,38 @@ class SkuInfoSpider(Spider):    # 需要继承scrapy.Spider类
         :param response:
         :return:
         """
-
         regx = 'normalize-space(//head/script[@charset="gbk"]/text())'
         data = response.xpath(regx).extract_first()
         jsData = get_vars(js2xml.parse(data))   # jsData取出来是个字典
         return jsData
 
+    def get_page_config_image_list(self, response):
+        """
+        获取商品主图列表
+        :param response:
+        :return:
+        """
+        jsData = self.get_page_config(response)
+        imageList = jsData['pageConfig']['product']['imageList']
+        imageListUrls = ['http://img12.360buyimg.com/n1/' + url for url in imageList]
+        return imageListUrls
+
     def get_page_config_desc_url(self, response):
+        """
+        获取商品富文本详情接口URL
+        :param response:
+        :return:
+        """
         jsData = self.get_page_config(response)
         descUrl = 'https:' + jsData['pageConfig']['product']['desc']
         return descUrl
 
     def get_page_config_main_sku_id(self, response):
+        """
+        获取商品多规格商品的主规格商品id
+        :param response:
+        :return:
+        """
         jsData = self.get_page_config(response)
         mainSkuId = jsData['pageConfig']['product']['mainSkuId']
         return mainSkuId

@@ -25,6 +25,7 @@ pip-wheel-metadata/
 dbs/
 logs/
 project.egg-info/
+storage/
 setup.py
 
 # macOS

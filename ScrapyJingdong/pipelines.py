@@ -88,13 +88,20 @@ class ImagePipeline(ImagesPipeline):
             '''
             SkuInfo 处理
             '''
+            # TODO: 区分主图和富文本图
+            info = self.spiderinfo
+            requests = arg_to_iter([])
+            if len(item['images']) > 0:
+                reqImages = arg_to_iter([self.get_media_requests(imgUrl, info) for imgUrl in item['images']])
+                requests.extend(reqImages)
             if len(item['rich_text_urls']) > 0:
-                info = self.spiderinfo
                 # 循环富文本图片列表, 构建图片下载
-                requests = arg_to_iter([self.get_media_requests(richImgUrl, info) for richImgUrl in item['rich_text_urls']])
-                dlist = [self._process_request(r, info, item) for r in requests]
-                dfd = DeferredList(dlist, consumeErrors=True)
-                return dfd.addCallback(self.item_completed, item, info)
+                reqRichTextUrls = arg_to_iter([self.get_media_requests(richImgUrl, info) for richImgUrl in item['rich_text_urls']])
+                requests.extend(reqRichTextUrls)
+            # 处理图片下载
+            dlist = [self._process_request(r, info, item) for r in requests]
+            dfd = DeferredList(dlist, consumeErrors=True)
+            return dfd.addCallback(self.item_completed, item, info)
 
     def get_media_requests(self, richImgUrl, info):
         """
@@ -114,16 +121,23 @@ class ImagePipeline(ImagesPipeline):
         :param info:
         :return:
         """
-        # 获取当前下载富文本序号, 将下载文件按序号排序
-        reqUrl = request.url
-        skuRichTextUrls = info.spider.skuInfo['rich_text_urls']
-        index = skuRichTextUrls.index(reqUrl)
         # 获取skuCode, 将图片资源以文件夹分组
         skuCode = info.spider.skuInfo['code']
-        # 年月/日/sku_code/随机
-        return '%s/%s/%s/%s.jpg' % (time.strftime("%Y%m", time.localtime()),
+        # 获取图片资源类型, 并且当前图片下载号, 将下载文件按序号排序
+        reqUrl = request.url
+        skuImageUrls = info.spider.skuInfo['images']
+        skuRichTextUrls = info.spider.skuInfo['rich_text_urls']
+        imageType = 'images'
+        if reqUrl in skuImageUrls:
+            index = skuImageUrls.index(reqUrl)
+        else:
+            index = skuRichTextUrls.index(reqUrl)
+            imageType = 'rich_text_images'
+        # 年月/日/sku_code/资源类型/随机
+        return '%s/%s/%s/%s/%s.jpg' % (time.strftime("%Y%m", time.localtime()),
                                     time.strftime("%d", time.localtime()),
                                     skuCode,
+                                    imageType,
                                     str(index).zfill(2) + time.strftime("%H%M%S", time.localtime()) + str(random.randint(10, 99)))
 
     def item_completed(self, results, item, info):
@@ -134,10 +148,17 @@ class ImagePipeline(ImagesPipeline):
         :param info:
         :return:
         """
-        image_paths = [x['path'] for ok, x in results if ok]
-        image_paths.sort()  # 由于__file_path__在处理文件名时做了序号前缀, 所以该出直接排序即可
-        if image_paths:
-            item['rich_text_urls'] = ''.join(image_paths)
+        paths = [x['path'] for ok, x in results if ok]
+        # 将图片资源存储到相应字段
+        imageUrls = [path for path in paths if path.split('/')[3] == 'images']
+        imageUrls.sort()  # 由于__file_path__在处理文件名时做了序号前缀, 所以该出直接排序即可
+        richTextUrls = [path for path in paths if path.split('/')[3] == 'rich_text_images']
+        richTextUrls.sort()
+
+        if paths:
+            item['images'] = ''.join(imageUrls)
+            item['rich_text_urls'] = ''.join(richTextUrls)
         else:
+            item['images'] = ''
             item['rich_text_urls'] = ''
         return item
