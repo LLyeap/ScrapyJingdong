@@ -20,7 +20,6 @@ import json
 import ScrapyJingdong.database as db
 from ScrapyJingdong.items import SkuInfo
 
-
 cursor = db.connection.cursor()
 
 
@@ -135,14 +134,13 @@ class ImagePipeline(ImagesPipeline):
             '''
             SkuInfo 处理
             '''
-            # TODO: 区分主图和富文本图
             info = self.spiderinfo
-            requests = arg_to_iter([])
-            if len(item['images']) > 0:
+            requests = arg_to_iter([])  # 存储图片下载请求
+            if len(item['images']) > 0:     # 存在主图图片, 处理主图下载
+                # 循环图片列表, 构建图片下载
                 reqImages = arg_to_iter([self.get_media_requests(imgUrl, info) for imgUrl in item['images']])
                 requests.extend(reqImages)
-            if len(item['rich_text_urls']) > 0:
-                # 循环富文本图片列表, 构建图片下载
+            if len(item['rich_text_urls']) > 0:     # 存在富文本内容图片, 处理富文本图片下载
                 reqRichTextUrls = arg_to_iter([self.get_media_requests(richImgUrl, info) for richImgUrl in item['rich_text_urls']])
                 requests.extend(reqRichTextUrls)
             # 处理图片下载
@@ -150,15 +148,15 @@ class ImagePipeline(ImagesPipeline):
             dfd = DeferredList(dlist, consumeErrors=True)
             return dfd.addCallback(self.item_completed, item, info)
 
-    def get_media_requests(self, richImgUrl, info):
+    def get_media_requests(self, img_url, info):
         """
         下载图片时, 第一个执行的函数
-        :param richImgUrl:
+        :param img_url:
         :param info:
         :return:
         """
-        if richImgUrl:
-            return Request(richImgUrl)
+        if img_url:
+            return Request(img_url)
 
     def file_path(self, request, response=None, info=None):
         """
@@ -168,9 +166,9 @@ class ImagePipeline(ImagesPipeline):
         :param info:
         :return:
         """
-        # 获取skuCode, 将图片资源以文件夹分组
+        # 获取skuCode, 将图片资源以skuCode划分文件夹分组
         skuCode = info.spider.skuInfo['code']
-        # 获取图片资源类型, 并且当前图片下载号, 将下载文件按序号排序
+        # 获取图片资源类型, 以及当前图片下载序号, 构建到文件名中, 方便排序
         reqUrl = request.url
         skuImageUrls = info.spider.skuInfo['images']
         skuRichTextUrls = info.spider.skuInfo['rich_text_urls']
@@ -180,7 +178,7 @@ class ImagePipeline(ImagesPipeline):
         else:
             index = skuRichTextUrls.index(reqUrl)
             imageType = 'rich_text_images'
-        # 年月/日/sku_code/资源类型/随机
+        # 文件名格式为: 年月/日/sku_code/资源类型/2位序号 + 时分秒 + 随机
         return '%s/%s/%s/%s/%s.jpg' % (time.strftime("%Y%m", time.localtime()),
                                     time.strftime("%d", time.localtime()),
                                     skuCode,
@@ -197,6 +195,7 @@ class ImagePipeline(ImagesPipeline):
         """
         paths = [x['path'] for ok, x in results if ok]
         # 将图片资源存储到相应字段
+        # 根据__file_path__构建文件名方法, 可知split('/')第三个元素为类型
         imageUrls = [path for path in paths if path.split('/')[3] == 'images']
         imageUrls.sort()  # 由于__file_path__在处理文件名时做了序号前缀, 所以该出直接排序即可
         richTextUrls = [path for path in paths if path.split('/')[3] == 'rich_text_images']

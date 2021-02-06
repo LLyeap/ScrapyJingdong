@@ -1,18 +1,19 @@
 import json
 import requests
 import js2xml
+import re
 from js2xml.utils.vars import get_vars
 from scrapy import Request, Spider
-import re
 
 from ScrapyJingdong.items import SkuInfo
 
 
 class SkuInfoSpider(Spider):    # 需要继承scrapy.Spider类
 
-    name = "sku_info"   # 定义蜘蛛名
+    # 定义蜘蛛名
+    name = "sku_info"
 
-    # 定义变量
+    # 定义全局变量
     skuInfo = SkuInfo()
     skuCode = ''
 
@@ -21,13 +22,16 @@ class SkuInfoSpider(Spider):    # 需要继承scrapy.Spider类
         self.skuCode = sku_code
         super().__init__(*args, **kwargs)
 
-    def start_requests(self):   # 由此方法通过下面链接爬取页面
+    # 系统方法, 由此方法通过下面链接爬取页面
+    def start_requests(self):
         # 定义爬取的链接
         urls = [
             'https://item.jd.com/' + self.skuCode + '.html',
         ]
         for url in urls:
-            yield Request(url=url, callback=self.parse)  # 爬取到的页面如何处理？提交给parse方法处理
+            # 爬取到的页面如何处理？->提交给parse方法处理
+            # 使用yield的形式, 可以在parse方法处理回调里, 继续处理请求
+            yield Request(url=url, callback=self.parse)
 
     def parse(self, response):
         """
@@ -39,15 +43,16 @@ class SkuInfoSpider(Spider):    # 需要继承scrapy.Spider类
         if 404 == response.status:
             print(response.url)
         else:
-            self.skuInfo['code'] = self.get_sku_id(response)
+            self.skuInfo['code'] = self.get_sku_id(response)    # 获取商品code
             self.skuInfo['images'] = self.get_page_config_image_list(response)   # 获取主图列表
             self.skuInfo['name'] = self.get_sku_name(response)    # 获取商品名称
             self.skuInfo['jd_price'] = self.get_sku_jd_price(response)    # 获取京东金额
 
             richTextUrl = self.get_page_config_desc_url(response)   # 获取富文本内容url
-            yield Request(url=richTextUrl, callback=self.parseRichText)
+            # 富文本是另一个接口, 需要进一步请求调用
+            yield Request(url=richTextUrl, callback=self.parse_rich_text)
 
-    def parseRichText(self, response):
+    def parse_rich_text(self, response):
         """
         进一层回调处理富文本内容
         :param response:
@@ -56,8 +61,10 @@ class SkuInfoSpider(Spider):    # 需要继承scrapy.Spider类
 
         # 正式处理富文本内容
         content = str(json.loads(response.text)['content'])
-        # regex = r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"   # 正则匹配图片url
-        regex = r"//(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"    # 正则匹配图片url, 由于图片src没有http协议开头, 所以去掉
+        # 正则匹配图片url
+        # regex = r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
+        # 正则匹配图片url, 由于图片src没有http协议开头, 所以去掉
+        regex = r"//(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
         data = re.findall(regex, content)   # 正则提取图片url列表
         data = ['http:' + url for url in data]
         self.skuInfo['rich_text_urls'] = data
