@@ -14,11 +14,17 @@ class SkuInfoSpider(Spider):    # 需要继承scrapy.Spider类
 
     # 定义变量
     skuInfo = SkuInfo()
+    skuCode = ''
+
+    # scrapy crawl sku_info -d sku_code=30278478342
+    def __init__(self, sku_code='', *args, **kwargs):
+        self.skuCode = sku_code
+        super().__init__(*args, **kwargs)
 
     def start_requests(self):   # 由此方法通过下面链接爬取页面
         # 定义爬取的链接
         urls = [
-            'https://item.jd.com/30278478342.html',
+            'https://item.jd.com/' + self.skuCode + '.html',
         ]
         for url in urls:
             yield Request(url=url, callback=self.parse)  # 爬取到的页面如何处理？提交给parse方法处理

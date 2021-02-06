@@ -27,6 +27,8 @@ logs/
 project.egg-info/
 storage/
 setup.py
+twistd.pid
+scrapydweb_settings_v10.py
 
 # macOS
 .DS_Store
