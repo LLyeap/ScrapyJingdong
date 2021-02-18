@@ -17,7 +17,7 @@ class SkuInfoSpider(Spider):    # 需要继承scrapy.Spider类
     skuInfo = SkuInfo()
     skuCode = ''
 
-    # scrapy crawl sku_info -d sku_code=30278478342
+    # scrapy crawl sku_info -a sku_code=30278478342
     def __init__(self, sku_code='', *args, **kwargs):
         self.skuCode = sku_code
         super().__init__(*args, **kwargs)

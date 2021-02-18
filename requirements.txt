@@ -1,0 +1,6 @@
+requests==2.25.1
+js2xml==0.4.0
+pillow==8.0.1
+pymysql==0.10.1
+scrapyd==1.2.1
+scrapyd-client==1.1.0
