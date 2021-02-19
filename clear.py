@@ -12,7 +12,8 @@ def main():
 
     # specify the path
     # 注意: 要执行删除的目录
-    path = "./storage/"
+    # path = "./storage/"
+    path = "/root/my_python/project/ScrapyJingdong/storage/"
 
     # specify the days
     # 注意: 文件保留天数
@@ -25,21 +26,27 @@ def main():
     # checking whether the file is present in path or not
     if os.path.exists(path):
 
-        # iterating over each and every folder and file in the path
-        for root_folder, folders, files in os.walk(path):
+        # if the path is a directory
+        if os.path.isdir(path):
 
-            # comparing the days
-            if seconds >= get_file_or_folder_age(root_folder):
+            # iterating over each and every folder and file in the path
+            for root_folder, folders, files in os.walk(path):
 
-                # removing the folder
-                remove_folder(root_folder)
-                deleted_folders_count += 1  # incrementing count
-
-                # breaking after removing the root_folder
-                break
-
-            else:
-
+                # comparing the days
+                """
+                # 取消对根目录的删除处理
+                if seconds >= get_file_or_folder_age(root_folder):
+    
+                    # removing the folder
+                    remove_folder(root_folder)
+                    deleted_folders_count += 1  # incrementing count
+    
+                    # breaking after removing the root_folder
+                    break
+    
+                else:
+                # 下方else内容减少了缩进
+                """
                 # checking folder from the root_folder
                 for folder in folders:
 
@@ -63,6 +70,9 @@ def main():
                         # invoking the remove_file function
                         remove_file(file_path)
                         deleted_files_count += 1  # incrementing count
+                """
+                # else内容缩进到此为止
+                """
 
         else:
 
