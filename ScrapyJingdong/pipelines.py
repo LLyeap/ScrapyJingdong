@@ -10,7 +10,6 @@
 # useful for handling different item types with a single interface
 
 import time
-import random
 from scrapy import Request
 from scrapy.pipelines.images import ImagesPipeline
 from scrapy.utils.misc import arg_to_iter
@@ -178,12 +177,12 @@ class ImagePipeline(ImagesPipeline):
         else:
             index = skuRichTextUrls.index(reqUrl)
             imageType = 'rich_text_images'
-        # 文件名格式为: 年月/日/sku_code/资源类型/2位序号 + 时分秒 + 随机
+        # 文件名格式为: 年月/日/sku_code/资源类型/2位序号 + 时分秒
         return '%s/%s/%s/%s/%s.jpg' % (time.strftime("%Y%m", time.localtime()),
                                     time.strftime("%d", time.localtime()),
                                     skuCode,
                                     imageType,
-                                    str(index).zfill(2) + time.strftime("%H%M%S", time.localtime()) + str(random.randint(10, 99)))
+                                    str(index).zfill(2) + time.strftime("%H%M%S", time.localtime()))
 
     def item_completed(self, results, item, info):
         """
@@ -202,8 +201,8 @@ class ImagePipeline(ImagesPipeline):
         richTextUrls.sort()
 
         if paths:
-            item['images'] = ''.join(imageUrls)
-            item['rich_text_urls'] = ''.join(richTextUrls)
+            item['images'] = ','.join(imageUrls)
+            item['rich_text_urls'] = ','.join(richTextUrls)
         else:
             item['images'] = ''
             item['rich_text_urls'] = ''
